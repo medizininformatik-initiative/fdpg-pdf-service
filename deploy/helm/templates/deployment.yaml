@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fdpg.fullname" . }}
+  labels:
+  {{- include "fdpg.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+  {{- include "fdpg.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if .Values.rollDeployment }}
+        rollme: {{ randAlphaNum 5 | quote }}
+      {{- end }}
+      {{- with .Values.podAnnotations }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+    {{- include "fdpg.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: {{ .Values.initContainer.name }}
+          image: "{{ .Values.initContainer.repository }}:{{ .Values.initContainer.tag }}"
+          imagePullPolicy: {{ .Values.initContainer.pullPolicy }}
+          command: {{ .Values.initContainer.command }}
+          args: {{ .Values.initContainer.args | indent 4 }}
+          volumeMounts:
+            - name: {{ .Values.initContainer.volumeMount.name }}
+              mountPath: {{ .Values.initContainer.volumeMount.mountPathInit }}
+      volumes:
+        - name: {{ .Values.initContainer.volumeMount.name }}
+          emptyDir: {}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+          - name: {{ .Values.initContainer.volumeMount.name }}
+            mountPath: {{ .Values.initContainer.volumeMount.mountPathContainer }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              value: {{ .Values.appConfig.environment.applicationInsightsConnectionString }}
+            - name: ENABLE_TELEMETRY
+              value: {{ .Values.appConfig.environment.enableTelemetry | quote}}
+            - name: EXPOSED_PORT
+              value: {{ .Values.appConfig.environment.exposedPort | quote}}
+            - name: INSIDE_DOCKER
+              value: {{ .Values.appConfig.environment.insideDocker | quote}}
+            - name: PRINT_FRONTEND_HOST
+              value: {{ .Values.appConfig.environment.printFrontendHost }}
+            - name: RELEASE_DATE
+              value: {{ .Values.appConfig.environment.releaseDate | quote }}
+            - name: RELEASE_NO_OF_DATE
+              value: {{ .Values.appConfig.environment.releaseNoOfDate | quote }}
+            - name: RELEASE_TIME
+              value: {{ .Values.appConfig.environment.releaseTime | quote }}
+            - name: SOFTWARE_VERSION
+              value: {{ .Values.appConfig.environment.softwareVersion }}
+            - name: ENV
+              value: {{ .Values.appConfig.environment.env }}
+            - name: IS_ENABLED
+              value: {{ .Values.appConfig.environment.isEnabled }}
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 100
+            timeoutSeconds: 2
+            periodSeconds: 3
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 100
+            timeoutSeconds: 2
+            periodSeconds: 8
+            failureThreshold: 1
+          resources:
+      {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+  {{- toYaml . | nindent 8 }}
+  {{- end }}

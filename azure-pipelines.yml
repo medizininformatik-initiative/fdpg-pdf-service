@@ -1,0 +1,153 @@
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger: none
+
+resources:
+  - repo: self
+
+parameters:
+  - name: printFrontendVersion
+    displayName: Print Frontend version to deploy
+    type: string
+    default: latest
+
+variables:
+  # Container registry service connection established during pipeline creation
+  - name: imageRepository
+    value: 'fdpg-pdf'
+  - name: containerRegistry
+    value: 'tmffdpgregistry.azurecr.io'
+  - name: registryServiceConnectionName
+    value: 'tmffdpgregistry_service_connection'
+  - name: dockerfilePath
+    value: '$(Build.SourcesDirectory)/Dockerfile'
+  - name: azureSubscription
+    value: 'fdpg_deployment_service_connection'
+  - name: azureResourceGroup
+    value: tmf-fdpg-shared
+  - name: tag
+    value: '$(Build.BuildId)'
+  - name: isMain
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  - name: isDev
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/dev')]
+  - name: pipeDate
+    value: $[format('{0:yyyyMMdd}', pipeline.startTime)]
+  - name: pipeTime
+    value: $[format('{0:HHmmss}', pipeline.startTime)]
+  - name: buildNumberOfDate
+    value: $[counter(format('{0}_{1:yyyyMMdd}', variables['Build.SourceBranch'], pipeline.startTime), 1)]
+
+  # Agent VM image name
+  - name: vmImageName
+    value: 'ubuntu-latest'
+
+stages:
+  - stage: Build
+    displayName: Build and push stage
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - script: |
+              npmVersionString=$(node -p "require('./package.json').version")
+              echo "##vso[task.setvariable variable=softwareVersion;isOutput=true]$npmVersionString"
+
+              if [ $(isDev) = True ]; then
+                echo "##vso[task.setvariable variable=tag;isOutput=true]latest"
+                echo "##vso[build.updatebuildnumber]latest_${npmVersionString}_$(pipeDate)_$(buildNumberOfDate)"
+              elif [ $(isMain) = True ]; then
+                echo "##vso[task.setvariable variable=tag;isOutput=true]${npmVersionString}_$(pipeDate)_$(buildNumberOfDate)"
+                echo "##vso[build.updatebuildnumber]${npmVersionString}_$(pipeDate)_$(buildNumberOfDate)"
+              else
+                echo "##vso[task.setvariable variable=tag;isOutput=true]test-latest"
+                echo "##vso[build.updatebuildnumber]test-latest_${npmVersionString}_$(pipeDate)_$(buildNumberOfDate)"
+              fi
+            name: dockerTag
+
+          - task: Docker@2
+            displayName: Build container
+            inputs:
+              command: 'build'
+              repository: $(imageRepository)
+              dockerfile: $(dockerfilePath)
+              containerRegistry: $(registryServiceConnectionName)
+              tags: |
+                $(dockerTag.tag)
+              arguments: >-
+                --build-arg SOFTWARE_VERSION=$(dockerTag.softwareVersion)
+                --build-arg BUILD_DATE=$(pipeDate)
+                --build-arg BUILD_TIME=$(pipeTime)
+                --build-arg BUILD_NO_OF_DATE=$(buildNumberOfDate)
+                --build-arg SOURCE_BRANCH=$(Build.SourceBranch)
+
+          - task: Docker@2
+            displayName: Push container to registry
+            condition: or(eq(variables.isDev, true), eq(variables.isMain, true))
+            inputs:
+              command: 'push'
+              repository: $(imageRepository)
+              containerRegistry: $(registryServiceConnectionName)
+              addPipelineData: true
+              tags: |
+                $(dockerTag.tag)
+
+  - stage: Helm_Deployment_Dev
+    displayName: 'Push Helm chart to registry and deploy to Dev'
+    condition: or(eq(variables.isDev, true), eq(variables.isMain, true))
+    jobs:
+      - job: helm_deploy
+        displayName: 'Push the helm chart to registry and deploy to dev via helm upgrade'
+        steps:
+          - task: AzureKeyVault@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              KeyVaultName: 'tmffdpg-keyvault'
+              SecretsFilter: '*'
+              RunAsPreJob: false
+          - task: HelmInstaller@1
+            displayName: Helm installer
+            inputs:
+              helmVersionToInstall: 3.7.1
+          - task: AzureCLI@2
+            displayName: 'Push the Helm chart to ACR'
+            inputs:
+              scriptType: bash
+              scriptLocation: inlineScript
+              azureSubscription: $(azureSubscription)
+              inlineScript: |
+                export HELM_EXPERIMENTAL_OCI=1
+                export HELM_VERSION=$(grep -A3 'version:' deploy/helm/Chart.yaml | awk '{ print $2}')
+                export ACR_USERNAME="00000000-0000-0000-0000-000000000000"
+                export ACR_PASSWORD=$(az acr login --name tmffdpgregistry --expose-token --output tsv --query accessToken)
+                helm registry login tmffdpgregistry.azurecr.io --username $ACR_USERNAME --password $ACR_PASSWORD
+                helm package ./deploy/helm
+                helm push fdpg-pdf-$HELM_VERSION.tgz oci://tmffdpgregistry.azurecr.io/helm
+
+          - task: HelmDeploy@0
+            condition: and(succeeded(), eq(variables.isDev, true))
+            displayName: 'helm upgrade'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              azureResourceGroup: $(azureResourceGroup)
+              kubernetesCluster: $(kubernetesCluster)
+              useClusterAdmin: true
+              namespace: $(devClusterNamespaceName)
+              command: upgrade
+              argument: --install
+              chartType: FilePath
+              chartPath: 'deploy/helm'
+              releaseName: 'fdpg-pdf'
+              waitForExecution: false
+              overrideValues: |
+                initContainer.tag=${{parameters.printFrontendVersion}}
+                appConfig.environment.env=dev
+                appConfig.environment.applicationInsightsConnectionString=$(devFdpgApplicationInsightsConnectionString)
+                appConfig.environment.releaseDate=$(pipeDate)
+                appConfig.environment.releaseTime=$(pipeTime)
+                appConfig.environment.releaseNoOfDate=$(buildNumberOfDate)
+                appConfig.environment.softwareVersion=$(Build.BuildNumber)

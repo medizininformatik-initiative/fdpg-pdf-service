@@ -1,0 +1,60 @@
+replicaCount: 1
+fullnameOverride: 'fdpg-pdf'
+
+image:
+  repository: tmffdpgregistry.azurecr.io/fdpg-pdf
+  pullPolicy: Always
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 3000
+  tlsEnabled: false
+
+rollDeployment: true
+
+podAnnotations: { type: backend }
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 50m
+  limits:
+    memory: 1024Mi
+
+appConfig:
+  environment:
+    applicationInsightsConnectionString: FILLED_BY_PIPELINE
+    enableTelemetry: true
+    exposedPort: 3000
+    insideDocker: true
+    printFrontendHost: http://localhost:3000
+    releaseDate: FILLED_BY_PIPELINE
+    releaseNoOfDate: FILLED_BY_PIPELINE
+    releaseTime: FILLED_BY_PIPELINE
+    softwareVersion: FILLED_BY_PIPELINE
+    env: dev
+
+nodeSelector:
+  agentpool: dev
+
+initContainer:
+  name: fdpg-print-frontend
+  repository: tmffdpgregistry.azurecr.io/fdpg-print-frontend
+  tag: latest
+  imagePullPolicy: Always
+  command:
+    - 'sh'
+  args: |
+    ['-c', 'echo "Copy files" && pwd && ls -la && cp -R /print-frontend/* /print-frontend-mount']
+
+  volumeMount:
+    name: print-frontend-mount
+    mountPathInit: /print-frontend-mount
+    mountPathContainer: /usr/src/app/print-frontend
