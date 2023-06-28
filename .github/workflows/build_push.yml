@@ -62,7 +62,7 @@ jobs:
           tags: ${{env.containerRegistry}}/${{env.imageName}}:${{env.imageTag}}
           build-args: |
             SOFTWARE_VERSION=${{github.ref}}
-            BUILD_DATE=${{pipeDate}}
-            BUILD_TIME=${{pipeTime}}
-            BUILD_NO_OF_DATE=${{buildNumberOfDate}}
+            BUILD_DATE=${{env.pipeDate}}
+            BUILD_TIME=${{env.pipeTime}}
+            BUILD_NO_OF_DATE=${{env.buildNumberOfDate}}
             SOURCE_BRANCH=${{github.ref}}
