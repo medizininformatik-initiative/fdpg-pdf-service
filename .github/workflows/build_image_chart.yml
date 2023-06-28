@@ -1,16 +1,19 @@
-name: Build and publish container image
+name: Build and publish container image and Helm chart
 
 on:
   push:
 
+
 env:
   containerRegistry: tmffdpgregistry.azurecr.io
   imageName: fdpg-pdf
+  chartRegistry: tmffdpgregistry.azurecr.io
   isMain: ${{ github.ref == 'refs/heads/main' }}
   isDev: ${{ github.ref == 'refs/heads/dev' }}
 
+
 jobs:
-  build:
+  container_image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -64,3 +67,31 @@ jobs:
             BUILD_TIME=${{env.pipeTime}}
             BUILD_NO_OF_DATE=${{env.buildNumberOfDate}}
             SOURCE_BRANCH=${{github.ref}}
+
+  helm_chart:
+    if: ${{env.isMain || env.isDev }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/setup-helm@v3
+        with:
+          version: '3.7.1'
+
+      - name: extract chart version
+        run: echo "CHART_VERSION=$(grep -A3 'version:' deploy/helm/Chart.yaml | awk '{ print $2}')" >> "$GITHUB_ENV"
+
+      - name: login to registry
+        run: helm registry login ${{ env.chartRegistry }} --username ${{ secrets.CHART_REPO_USERNAME }} --password ${{ secrets.CHART_REPO_PASSWORD }}
+
+      - name: package chart
+        run: helm package ./deploy/helm
+
+      - name: push chart
+        run: helm push fdpg-pdf-${{ env.CHART_VERSION }}.tgz oci://${{ env.chartRegistry }}/helm
+
+      - name: configure Kubernetes cluster
+        if: ${{ env.isDev }}
+        run: echo ${{ secrets.kubeConfig }} > ./.kubeconfig
+
+      - name: deploy
+        if: ${{ env.isDev }}
+        run: helm upgrade --install fdpg-pdf ./deploy/helm --namespace ${{ env.devClusterNamespaceName }} --kubeconfig .kubeconfig
