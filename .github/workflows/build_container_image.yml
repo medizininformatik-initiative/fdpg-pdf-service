@@ -7,7 +7,6 @@ on:
 env:
   containerRegistry: tmffdpgregistry.azurecr.io
   imageName: fdpg-pdf
-  chartRegistry: tmffdpgregistry.azurecr.io
   isMain: ${{ github.ref == 'refs/heads/main' }}
   isDev: ${{ github.ref == 'refs/heads/dev' }}
 
