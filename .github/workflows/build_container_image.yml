@@ -58,7 +58,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
-          push: true # ${{env.isMain == 'true' || env.isDev == 'true' }}
+          push: ${{env.isMain == 'true' || env.isDev == 'true' }}
           tags: ${{env.containerRegistry}}/fdpg/${{env.imageName}}:${{env.imageTag}}
           build-args: |
             SOFTWARE_VERSION=${{github.ref}}
