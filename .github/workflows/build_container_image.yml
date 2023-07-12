@@ -5,7 +5,7 @@ on:
 
 
 env:
-  containerRegistry: tmffdpgregistry.azurecr.io
+  containerRegistry: container-registry.cr.de-fra.ionos.com
   imageName: fdpg-pdf
   isMain: ${{ github.ref == 'refs/heads/main' }}
   isDev: ${{ github.ref == 'refs/heads/dev' }}
@@ -58,7 +58,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
-          push: false # TODO: wait for Ionos Registry, then:  ${{env.isMain || env.isDev }}
+          push: ${{env.isMain == 'true' || env.isDev == 'true' }}
           tags: ${{env.containerRegistry}}/${{env.imageName}}:${{env.imageTag}}
           build-args: |
             SOFTWARE_VERSION=${{github.ref}}
