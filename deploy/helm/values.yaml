@@ -30,7 +30,7 @@ resources:
 
 appConfig:
   environment:
-    applicationInsightsConnectionString: FILLED_BY_PIPELINE
+    otelExporterConnectionString: FILLED_BY_PIPELINE
     enableTelemetry: true
     exposedPort: 3000
     insideDocker: true
