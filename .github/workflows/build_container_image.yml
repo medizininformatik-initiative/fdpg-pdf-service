@@ -45,7 +45,7 @@ jobs:
         run: echo "imageTag=test-latest" >> "$GITHUB_ENV"
 
       - name: set buildNumberOfDate variable
-        # Github does not support resetting counters => buildNumberOfDate will never be reset to 1, always increases
+        # Github does not support resetting counters => buildNumberOfDate will never be reset to 1, always increasing
         run: echo "buildNumberOfDate=${{github.run_number}}" >> "$GITHUB_ENV"
 
       - name: Login to Docker Hub
@@ -60,9 +60,10 @@ jobs:
         with:
           push: ${{env.isMain == 'true' || env.isDev == 'true' }}
           tags: ${{env.containerRegistry}}/fdpg/${{env.imageName}}:${{env.imageTag}}
-          build-args: |
-            SOFTWARE_VERSION=${{github.ref}}
+          labels:
+            SOURCE_BRANCH=${{github.ref}}
             BUILD_DATE=${{env.pipeDate}}
             BUILD_TIME=${{env.pipeTime}}
             BUILD_NO_OF_DATE=${{env.buildNumberOfDate}}
-            SOURCE_BRANCH=${{github.ref}}
+          build-args: |
+            SOFTWARE_VERSION=${{github.ref}}
