@@ -11,10 +11,13 @@ import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core'
 import { Resource } from '@opentelemetry/resources';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from '@opentelemetry/semantic-conventions';
 import { IncomingMessage } from 'http';
 import { SERVICE_ID } from './constants';
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 
 export const configureTelemetry = (config: {
   connectionString: string;
@@ -26,20 +29,25 @@ export const configureTelemetry = (config: {
   if (config.enableTelemetry) {
     const resource = Resource.default().merge(
       new Resource({
-        [SemanticResourceAttributes.SERVICE_NAME]: `${SERVICE_ID}_${config.env}`,
-        [SemanticResourceAttributes.SERVICE_VERSION]: config.softwareVersion,
-        [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: config.env,
+        [ATTR_SERVICE_NAME]: `${SERVICE_ID}_${config.env}`,
+        [ATTR_SERVICE_VERSION]: config.softwareVersion,
+        ['deployment.environment']: config.env,
         application: `${SERVICE_ID}_${config.env}`,
       }),
     );
 
-    const provider = new NodeTracerProvider({ resource });
+    const spanProcessors = [
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({
+          url: config.connectionString,
+        }),
+      ),
+    ];
 
-    const exporter = new OTLPTraceExporter({
-      url: config.connectionString
+    const provider = new NodeTracerProvider({
+      resource,
+      spanProcessors,
     });
-
-    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
 
     provider.register({
       propagator: new W3CTraceContextPropagator(),
@@ -58,8 +66,7 @@ export const configureTelemetry = (config: {
           applyCustomAttributesOnSpan: (span, request, response) => {
             if (request instanceof IncomingMessage) {
               span.setAttributes({
-                [SemanticResourceAttributes.SERVICE_VERSION]:
-                  config.softwareVersion,
+                [ATTR_SERVICE_NAME]: config.softwareVersion,
                 ['request.method']: request.method,
                 ['request.user-agent']: request.headers['user-agent'],
               });

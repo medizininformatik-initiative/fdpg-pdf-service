@@ -15,6 +15,7 @@ export class AppService {
       this.configService.get<string>('INSIDE_DOCKER')?.toLowerCase() === 'true';
     this.host = this.configService.get<string>('PRINT_FRONTEND_HOST');
   }
+
   async generatePdf(data: any, dataPrivacyTexts: any): Promise<Buffer> {
     const url = `${this.host}/print/proposal`;
     const lang = 'de-DE';
@@ -82,6 +83,7 @@ export class AppService {
     if (error) {
       throw new InternalServerErrorException(error);
     }
-    return pdfBuffer;
+
+    return Buffer.from(pdfBuffer);
   }
 }
