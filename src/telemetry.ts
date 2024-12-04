@@ -14,7 +14,6 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
 } from '@opentelemetry/semantic-conventions';
 import { IncomingMessage } from 'http';
 import { SERVICE_ID } from './constants';
@@ -32,7 +31,7 @@ export const configureTelemetry = (config: {
       new Resource({
         [ATTR_SERVICE_NAME]: `${SERVICE_ID}_${config.env}`,
         [ATTR_SERVICE_VERSION]: config.softwareVersion,
-        [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: config.env,
+        ['deployment.environment']: config.env,
         application: `${SERVICE_ID}_${config.env}`,
       }),
     );
