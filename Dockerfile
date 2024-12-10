@@ -1,4 +1,4 @@
-FROM node:20 AS build
+FROM node:22 AS build
 ENV CHROME_BIN="/usr/bin/chromium-browser" \
   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD="true"
 WORKDIR /usr/src/app
@@ -8,7 +8,7 @@ RUN yarn install
 COPY . .
 RUN yarn build
 
-FROM node:20-alpine as productionModules
+FROM node:22-alpine as productionModules
 ENV CHROME_BIN="/usr/bin/chromium-browser" \
   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD="true"
 WORKDIR /usr/src/app
@@ -17,7 +17,7 @@ COPY yarn.lock ./
 RUN yarn install --production=true
 
 
-FROM node:20-alpine as release
+FROM node:22-alpine as release
 ARG NODE_ENV=production
 ENV NODE_ENV=$NODE_ENV
 ARG SOFTWARE_VERSION
