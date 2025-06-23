@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import puppeteer, { PuppeteerLaunchOptions } from 'puppeteer';
 import { trace } from '@opentelemetry/api';
 
-type extendedWindow = typeof window & { data: any; dataPrivacyTexts: any };
+type extendedWindow = typeof window & {
+  data: any;
+  dataPrivacyTexts: any;
+  dataSources: any;
+};
 
 @Injectable()
 export class AppService {
@@ -16,7 +20,11 @@ export class AppService {
     this.host = this.configService.get<string>('PRINT_FRONTEND_HOST');
   }
 
-  async generatePdf(data: any, dataPrivacyTexts: any): Promise<Buffer> {
+  async generatePdf(
+    data: any,
+    dataPrivacyTexts: any,
+    dataSources: any,
+  ): Promise<Buffer> {
     const url = `${this.host}/print/proposal`;
     const lang = 'de-DE';
     const options: PuppeteerLaunchOptions = {
@@ -61,7 +69,7 @@ export class AppService {
     });
 
     await page.evaluateOnNewDocument(
-      (data, lang, dataPrivacyTexts) => {
+      (data, lang, dataPrivacyTexts, dataSources) => {
         Object.defineProperty(navigator, 'language', {
           get: () => {
             return lang;
@@ -69,10 +77,12 @@ export class AppService {
         });
         (window as extendedWindow).data = data;
         (window as extendedWindow).dataPrivacyTexts = dataPrivacyTexts;
+        (window as extendedWindow).dataSources = dataSources;
       },
       data,
       lang,
       dataPrivacyTexts,
+      dataSources,
     );
 
     await page.goto(url, { waitUntil: 'networkidle0' });

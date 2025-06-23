@@ -21,22 +21,30 @@ export class AppController {
 
   @Post('proposal/buffer')
   async generateProposalPdf(
-    @Body() { data, dataPrivacyTexts }: PrintDto,
+    @Body() { data, dataPrivacyTexts, dataSources }: PrintDto,
   ): Promise<Buffer> {
-    const buffer = await this.appService.generatePdf(data, dataPrivacyTexts);
+    const buffer = await this.appService.generatePdf(
+      data,
+      dataPrivacyTexts,
+      dataSources,
+    );
     return buffer;
   }
 
   @Post('proposal/file')
   async generateProposalPdfFile(
-    @Body() { data, dataPrivacyTexts }: PrintDto,
+    @Body() { data, dataPrivacyTexts, dataSources }: PrintDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': 'attachment; filename="download.pdf"',
     });
-    const buffer = await this.appService.generatePdf(data, dataPrivacyTexts);
+    const buffer = await this.appService.generatePdf(
+      data,
+      dataPrivacyTexts,
+      dataSources,
+    );
     return new StreamableFile(buffer);
   }
 }
