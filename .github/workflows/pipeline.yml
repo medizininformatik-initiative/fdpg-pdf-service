@@ -3,13 +3,11 @@ name: Build and publish container image
 on:
   push:
 
-
 env:
   containerRegistry: container-registry.cr.de-fra.ionos.com
   imageName: fdpg-pdf
   isMain: ${{ github.ref == 'refs/heads/main' }}
   isDev: ${{ github.ref == 'refs/heads/dev' }}
-
 
 jobs:
   container_image:
@@ -42,7 +40,7 @@ jobs:
 
       - name: set variables for dev
         if: ${{env.isDev == 'true'}}
-        run: echo "imageTag=latest" >> "$GITHUB_ENV"
+        run: echo "imageTag=${{env.npmVersionString}}_${{env.pipeDate}}_${{env.buildNumberOfDate}}_dev" >> "$GITHUB_ENV"
 
       - name: set variables when neither main nor dev
         if: ${{env.isDev == 'false' && env.isMain == 'false'}}
@@ -60,8 +58,7 @@ jobs:
         with:
           push: ${{env.isMain == 'true' || env.isDev == 'true' }}
           tags: ${{env.containerRegistry}}/fdpg/${{env.imageName}}:${{env.imageTag}}
-          labels:
-            SOURCE_BRANCH=${{github.ref}}
+          labels: SOURCE_BRANCH=${{github.ref}}
             BUILD_DATE=${{env.pipeDate}}
             BUILD_TIME=${{env.pipeTime}}
             BUILD_NO_OF_DATE=${{env.buildNumberOfDate}}
