@@ -1,0 +1,1 @@
+var n=(t=>(t.Default="default",t.Small="small",t))(n||{}),e=(t=>(t.Draft="Draft",t.Outstanding="Outstanding",t.Ongoing="Ongoing",t.Completed="Completed",t.Archive="Archive",t.Requested="Requested",t.Pending="Pending",t.Current="Current",t))(e||{});export{e as C,n as F};

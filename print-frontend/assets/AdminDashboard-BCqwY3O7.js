@@ -1,0 +1,1 @@
+import{_ as o}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{a as e,o as a}from"./print-Cw0wfpE4.js";const r={},s={class:"fdpg-dashboard-page"};function c(t,n){return a(),e("div",s)}const f=o(r,[["render",c]]);export{f as default};
