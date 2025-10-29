@@ -1,0 +1,1 @@
+import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{a as r,o as t,t as a}from"./print-Cw0wfpE4.js";const n={};function s(o,c){return t(),r("section",null,a(o.$t("dashboard.noRole")),1)}const f=e(n,[["render",s]]);export{f as default};
