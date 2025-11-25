@@ -7,6 +7,7 @@ type extendedWindow = typeof window & {
   data: any;
   dataPrivacyTexts: any;
   dataSources: any;
+  locationLookupMap: any;
 };
 
 @Injectable()
@@ -24,6 +25,7 @@ export class AppService {
     data: any,
     dataPrivacyTexts: any,
     dataSources: any,
+    locationLookupMap: any,
   ): Promise<Buffer> {
     const url = `${this.host}/print/proposal`;
     const lang = 'de-DE';
@@ -69,7 +71,7 @@ export class AppService {
     });
 
     await page.evaluateOnNewDocument(
-      (data, lang, dataPrivacyTexts, dataSources) => {
+      (data, lang, dataPrivacyTexts, dataSources, locationLookupMap) => {
         Object.defineProperty(navigator, 'language', {
           get: () => {
             return lang;
@@ -78,11 +80,13 @@ export class AppService {
         (window as extendedWindow).data = data;
         (window as extendedWindow).dataPrivacyTexts = dataPrivacyTexts;
         (window as extendedWindow).dataSources = dataSources;
+        (window as extendedWindow).locationLookupMap = locationLookupMap;
       },
       data,
       lang,
       dataPrivacyTexts,
       dataSources,
+      locationLookupMap,
     );
 
     await page.goto(url, { waitUntil: 'networkidle0' });

@@ -21,19 +21,22 @@ export class AppController {
 
   @Post('proposal/buffer')
   async generateProposalPdf(
-    @Body() { data, dataPrivacyTexts, dataSources }: PrintDto,
+    @Body()
+    { data, dataPrivacyTexts, dataSources, locationLookupMap }: PrintDto,
   ): Promise<Buffer> {
     const buffer = await this.appService.generatePdf(
       data,
       dataPrivacyTexts,
       dataSources,
+      locationLookupMap,
     );
     return buffer;
   }
 
   @Post('proposal/file')
   async generateProposalPdfFile(
-    @Body() { data, dataPrivacyTexts, dataSources }: PrintDto,
+    @Body()
+    { data, dataPrivacyTexts, dataSources, locationLookupMap }: PrintDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     res.set({
@@ -44,6 +47,7 @@ export class AppController {
       data,
       dataPrivacyTexts,
       dataSources,
+      locationLookupMap,
     );
     return new StreamableFile(buffer);
   }
